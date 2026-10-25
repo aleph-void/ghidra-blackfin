@@ -1,5 +1,7 @@
 # ghidra-blackfin
 
+[![Sponsor Aleph Void](https://img.shields.io/badge/Sponsor-Aleph%20Void-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/aleph-void)
+
 A Ghidra 12 processor extension for the **classic Analog Devices Blackfin ISA**
 (ADSP-BF53x and relatives). Ghidra has no Blackfin support; this module decodes
 the whole instruction set, including multi-issue packets and hardware loops, and
