@@ -65,12 +65,6 @@ define pcodeop outc;
 define pcodeop dbg_assert;
 define pcodeop abort;
 define pcodeop halt;
-define pcodeop saa;
-define pcodeop byteop1p;
-define pcodeop byteop16p;
-define pcodeop byteop16m;
-define pcodeop byteop2p;
-define pcodeop byteop3p;
 define pcodeop disalgnexcpt;
 
 # Instruction word (16-bit instructions, the first word of 32-bit ones and the

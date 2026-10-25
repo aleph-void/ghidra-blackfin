@@ -530,28 +530,50 @@ DSP: xdr6 "= A0 + A1," xdr9 "= A0 - A1" AMOD1 is (w12_15=0xc & w9_10=2 & w6_8=0 
 # ---- aopcde 18-24: byte-video operations -------------------------------------------
 
 DSP: "SAA ("^PAIRA^","^PAIRB^")" RDIR is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=18; x13 & x14_15=0 & PAIRA & PAIRB & RDIR) {
-  A0 = saa(PAIRA, PAIRB, I0, I1, A0, x13:1, 0:1);
-  A1 = saa(PAIRA, PAIRB, I0, I1, A1, x13:1, 1:1);
+  local s0:4; local s1:4;
+  bytealign(s0, PAIRA, x13:1, I0); bytealign(s1, PAIRB, x13:1, I1);
+  local a0:4 = A0:4; local a1:4 = A1:4;
+  local r:4; local d:4; local b0:4; local b1:4;
+  # |byte difference| added to an accumulator half, saturated to 16 bits unsigned
+  byteat(b0, s0, 0); byteat(b1, s1, 0); d = b0 - b1; d = zext(d s< 0) * (0 - d) + zext(d s>= 0) * d;
+  satu16(r, d + (a0 & 0xffff)); local n0:4 = r;
+  byteat(b0, s0, 1); byteat(b1, s1, 1); d = b0 - b1; d = zext(d s< 0) * (0 - d) + zext(d s>= 0) * d;
+  satu16(r, d + (a0 >> 16)); n0 = n0 | (r << 16);
+  byteat(b0, s0, 2); byteat(b1, s1, 2); d = b0 - b1; d = zext(d s< 0) * (0 - d) + zext(d s>= 0) * d;
+  satu16(r, d + (a1 & 0xffff)); local n1:4 = r;
+  byteat(b0, s0, 3); byteat(b1, s1, 3); d = b0 - b1; d = zext(d s< 0) * (0 - d) + zext(d s>= 0) * d;
+  satu16(r, d + (a1 >> 16)); n1 = n1 | (r << 16);
+  A0 = zext(n0); A1 = zext(n1);
 }
 DSP: "DISALGNEXCPT" is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=18; x14_15=3) { disalgnexcpt(); }
 DSP: xdr9 "= BYTEOP1P ("^PAIRA^","^PAIRB^")" RDIR is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=20; x13 & x14_15=0 & xdr9 & PAIRA & PAIRB & RDIR) {
-  xdr9 = byteop1p(PAIRA, PAIRB, I0, I1, x13:1, 0:1);
+  byteop1p(xdr9, PAIRA, PAIRB, x13:1, 1:4);
 }
 DSP: xdr9 "= BYTEOP1P ("^PAIRA^","^PAIRB^") (T)" is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=20; x14_15=1 & x13=0 & xdr9 & PAIRA & PAIRB) {
-  xdr9 = byteop1p(PAIRA, PAIRB, I0, I1, 0:1, 1:1);
+  byteop1p(xdr9, PAIRA, PAIRB, 0:1, 0:4);
 }
 DSP: xdr9 "= BYTEOP1P ("^PAIRA^","^PAIRB^") (T, R)" is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=20; x14_15=1 & x13=1 & xdr9 & PAIRA & PAIRB) {
-  xdr9 = byteop1p(PAIRA, PAIRB, I0, I1, 1:1, 1:1);
+  byteop1p(xdr9, PAIRA, PAIRB, 1:1, 0:4);
 }
 DSP: "("^xdr6^","^xdr9^") = BYTEOP16P ("^PAIRA^","^PAIRB^")" RDIR is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=21; x13 & x14_15=0 & xdr6 & xdr9 & PAIRA & PAIRB & RDIR) {
-  local lo:4 = byteop16p(PAIRA, PAIRB, I0, I1, x13:1, 0:1);
-  xdr6 = byteop16p(PAIRA, PAIRB, I0, I1, x13:1, 1:1);
-  xdr9 = lo;
+  local s0:4; local s1:4;
+  bytealign(s0, PAIRA, x13:1, I0); bytealign(s1, PAIRB, x13:1, I1);
+  local b0:4; local b1:4; local lo:4; local hi:4;
+  byteat(b0, s0, 0); byteat(b1, s1, 0); lo = b0 + b1;
+  byteat(b0, s0, 1); byteat(b1, s1, 1); lo = lo | ((b0 + b1) << 16);
+  byteat(b0, s0, 2); byteat(b1, s1, 2); hi = b0 + b1;
+  byteat(b0, s0, 3); byteat(b1, s1, 3); hi = hi | ((b0 + b1) << 16);
+  xdr9 = lo; xdr6 = hi;
 }
 DSP: "("^xdr6^","^xdr9^") = BYTEOP16M ("^PAIRA^","^PAIRB^")" RDIR is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=21; x13 & x14_15=1 & xdr6 & xdr9 & PAIRA & PAIRB & RDIR) {
-  local lo:4 = byteop16m(PAIRA, PAIRB, I0, I1, x13:1, 0:1);
-  xdr6 = byteop16m(PAIRA, PAIRB, I0, I1, x13:1, 1:1);
-  xdr9 = lo;
+  local s0:4; local s1:4;
+  bytealign(s0, PAIRA, x13:1, I0); bytealign(s1, PAIRB, x13:1, I1);
+  local b0:4; local b1:4; local lo:4; local hi:4;
+  byteat(b0, s0, 0); byteat(b1, s1, 0); lo = (b0 - b1) & 0xffff;
+  byteat(b0, s0, 1); byteat(b1, s1, 1); lo = lo | ((b0 - b1) << 16);
+  byteat(b0, s0, 2); byteat(b1, s1, 2); hi = (b0 - b1) & 0xffff;
+  byteat(b0, s0, 3); byteat(b1, s1, 3); hi = hi | ((b0 - b1) << 16);
+  xdr9 = lo; xdr6 = hi;
 }
 B2MODE: "(RNDL)" is w5=0; x14_15=0 & x13=0 { }
 B2MODE: "(RNDL, R)" is w5=0; x14_15=0 & x13=1 { }
@@ -562,14 +584,33 @@ B2MODE: "(TL, R)" is w5=0; x14_15=1 & x13=1 { }
 B2MODE: "(TH)" is w5=1; x14_15=1 & x13=0 { }
 B2MODE: "(TH, R)" is w5=1; x14_15=1 & x13=1 { }
 DSP: xdr9 "= BYTEOP2P ("^PAIRA^","^PAIRB^")" B2MODE is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=22 & w5; x13 & x15=0 & x14 & xdr9 & PAIRA & PAIRB) & B2MODE {
-  xdr9 = byteop2p(PAIRA, PAIRB, I0, I1, x13:1, w5:1, x14:1);
+  # both pairs are aligned by I0 (bfin-sim.c); RND adds 2 before the divide by 4
+  local s0:4; local s1:4;
+  bytealign(s0, PAIRA, x13:1, I0); bytealign(s1, PAIRB, x13:1, I0);
+  local rnd:4 = zext(x14:1 == 0:1) * 2;
+  local b0:4; local b1:4; local b2:4; local b3:4;
+  byteat(b0, s1, 1); byteat(b1, s1, 0); byteat(b2, s0, 1); byteat(b3, s0, 0);
+  local t0:4 = ((b0 + b1 + b2 + b3 + rnd) >> 2) & 0xff;
+  byteat(b0, s1, 3); byteat(b1, s1, 2); byteat(b2, s0, 3); byteat(b3, s0, 2);
+  local t1:4 = ((b0 + b1 + b2 + b3 + rnd) >> 2) & 0xff;
+  local hl:4 = zext(w5:1) * 8;
+  xdr9 = (t1 << (16 + hl)) | (t0 << hl);
 }
 B3MODE: "(LO)" is w5=0; x13=0 { }
 B3MODE: "(LO, R)" is w5=0; x13=1 { }
 B3MODE: "(HI)" is w5=1; x13=0 { }
 B3MODE: "(HI, R)" is w5=1; x13=1 { }
 DSP: xdr9 "= BYTEOP3P ("^PAIRA^","^PAIRB^")" B3MODE is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=23 & w5; x13 & x14_15=0 & xdr9 & PAIRA & PAIRB) & B3MODE {
-  xdr9 = byteop3p(PAIRA, PAIRB, I0, I1, x13:1, w5:1);
+  local s0:4; local s1:4;
+  bytealign(s0, PAIRA, x13:1, I0); bytealign(s1, PAIRB, x13:1, I1);
+  local lsh:4 = (1 - zext(w5:1)) * 8;
+  local t0:4 = sext(s0:2) + ((s1 >> lsh) & 0xff);
+  local s0h:4 = s0 >> 16;
+  local t1:4 = sext(s0h:2) + ((s1 >> (16 + lsh)) & 0xff);
+  local c0:4; local c1:4;
+  clampu8(c0, t0); clampu8(c1, t1);
+  local hl:4 = zext(w5:1) * 8;
+  xdr9 = (c0 << hl) | (c1 << (16 + hl));
 }
 DSP: xdr9 "= BYTEPACK ("^xdr3^","^xdr0^")" is (w12_15=0xc & w9_10=2 & w6_8=0 & w0_4=24; x14_15=0 & xdr9 & xdr3 & xdr0) {
   xdr9 = (xdr3 & 0xff) | ((xdr3 >> 8) & 0xff00) | ((xdr0 & 0xff) << 16) | ((xdr0 << 8) & 0xff000000);

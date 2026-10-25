@@ -90,3 +90,45 @@ macro dagsub(i, source, b, l, modify) {
   local negative:4 = 0 - modify;
   dagupdate(i, source, b, l, negative);
 }
+
+# ---- byte-video helpers (Ghidra-Rare; semantics of gdb sim/bfin/bfin-sim.c) ---------------
+# The four bytes a byte-video operation reads from a register pair: the pair is H:L
+# (PAIRA/PAIRB export (H << 32) | L); with (R) the halves swap; the low two bits of the
+# alignment I register pick the starting byte (sim algn()).
+macro bytealign(out, pair, rev, ireg) {
+  local c:8 = pair;
+  local swapped:8 = (c << 32) | (c >> 32);
+  c = zext(rev == 0:1) * c + zext(rev != 0:1) * swapped;
+  local sh:8 = zext(ireg & 3) * 8;
+  c = c >> sh;
+  out = c:4;
+}
+macro byteat(out, w, n) {
+  out = (w >> (n * 8)) & 0xff;
+}
+macro satu16(out, v) {
+  out = v;
+  if (v <= 0xffff) goto <ok>;
+  out = 0xffff;
+<ok>
+}
+macro clampu8(out, v) {
+  out = v;
+  if (v s>= 0) goto <notneg>;
+  out = 0;
+<notneg>
+  if (out s<= 255) goto <ok>;
+  out = 255;
+<ok>
+}
+# BYTEOP1P: average of byte pairs, rounded up unless (T)
+macro byteop1p(dst, pa, pb, rev, rnd) {
+  local s0:4; local s1:4;
+  bytealign(s0, pa, rev, I0); bytealign(s1, pb, rev, I1);
+  local b0:4; local b1:4; local r:4 = 0;
+  byteat(b0, s0, 0); byteat(b1, s1, 0); r = r | (((b0 + b1 + rnd) >> 1) & 0xff);
+  byteat(b0, s0, 1); byteat(b1, s1, 1); r = r | ((((b0 + b1 + rnd) >> 1) & 0xff) << 8);
+  byteat(b0, s0, 2); byteat(b1, s1, 2); r = r | ((((b0 + b1 + rnd) >> 1) & 0xff) << 16);
+  byteat(b0, s0, 3); byteat(b1, s1, 3); r = r | ((((b0 + b1 + rnd) >> 1) & 0xff) << 24);
+  dst = r;
+}
