@@ -8,15 +8,21 @@ code. Decoding is checked against GNU objdump and semantics against the GNU
 Blackfin simulator. It was built to reverse-engineer the ADSP-BF531 firmware of
 the Pioneer CDJ-2000NXS.
 
+> **Ghidra-Rare fork.** This is the [Ghidra-Rare](https://github.com/aleph-void/Ghidra-Rare)
+> fork (branch `ghidra-rare`), still GPL-3.0-or-later. It adds p-code for the byte-video
+> instructions, simulator-exact circular addressing, ELF relocations, FDPIC GOT/PLT handling,
+> a DWARF register map and real-binary checks; see [`GHIDRA-RARE.md`](GHIDRA-RARE.md) for the
+> results and [`CREDITS.md`](CREDITS.md) for the list of changes. Prebuilt zips for Ghidra
+> 12.1.3, 12.1.4 and 12.2 are on this fork's Releases page.
+
 ## Install
 
-1. Download `ghidra_<version>_PUBLIC_Blackfin.zip` from
-   [Releases](https://github.com/geepot/ghidra-blackfin/releases), or
-   [build it](#build).
+1. Download `ghidra_<version>_PUBLIC_<date>_Blackfin.zip` from this fork's Releases
+   page (zips for Ghidra 12.1.3, 12.1.4 and 12.2), or [build it](#build).
 2. In Ghidra: *File → Install Extensions*, **+**, pick the zip, restart Ghidra.
 
-The zip is tied to the Ghidra version it was built against (the current release
-targets 12.1.3); rebuild it for any other 12.x release. Programs analysed with an
+The zip is tied to the Ghidra version it was built against; pick the one matching
+your Ghidra or rebuild it for any other 12.x release. Programs analysed with an
 earlier build keep the old instruction lengths in their listing: clear and
 re-disassemble them after upgrading.
 
@@ -26,7 +32,9 @@ Ghidra selects **`Blackfin:LE:32:default`** (compiler spec `default`, "GNU
 Blackfin") automatically for 32-bit little-endian Blackfin ELF files. For a raw
 image or an LDR boot stream, choose that language when importing; for a raw
 memory image, also set its load address. An LDR stream must first be unpacked
-into its target memory regions.
+into its target memory regions. In this fork, FDPIC shared libraries and object
+files are relocated, PLT stubs become thunks of their callees, P3 is known to hold
+the GOT address, and GCC's DWARF register numbers are mapped.
 
 ## Features
 
@@ -52,13 +60,18 @@ into its target memory regions.
 
 ## Limitations
 
-- **Opaque operations** (user operations with honest inputs and outputs): the
-  byte-video operations `BYTEOP1P/2P/3P/16P/16M` and `SAA`, `DISALGNEXCPT`,
-  cache control, `IDLE`, `RAISE`, `EXCPT` and the simulator pseudo instructions
-  (`DBG`, `OUTC`, `HLT`, `DBGA`...).
-- Circular DAG updates assume a configured buffer: the incoming I register lies
-  within its B/L span and the modify amount does not exceed its length. Cases
-  outside that setup have not been checked against hardware.
+- **Opaque operations** (user operations with honest inputs and outputs):
+  `DISALGNEXCPT`, cache control, `IDLE`, `RAISE`, `EXCPT` and the simulator
+  pseudo instructions (`DBG`, `OUTC`, `HLT`, `DBGA`...). *(Fixed in the
+  Ghidra-Rare fork: the byte-video operations `BYTEOP1P/2P/3P/16P/16M` and `SAA`
+  now have p-code, checked against the GNU simulator. The remaining ones act on
+  processor state Ghidra does not model (exceptions, interrupts, caches, the
+  simulator's console); see GHIDRA-RARE.md.)*
+- ~~Circular DAG updates assume a configured buffer~~ *(fixed in the Ghidra-Rare
+  fork: the update follows the GNU simulator's carry-based wrap, which also covers
+  an index outside its B/L span, a modify larger than the length and buffers that
+  cross 0xffffffff; 3,000 random cases agree with the simulator. Hardware itself
+  has not been checked.)*
 
 ## Build
 
