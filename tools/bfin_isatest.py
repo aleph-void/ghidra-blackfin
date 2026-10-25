@@ -24,6 +24,7 @@ import random
 import re
 import struct
 import subprocess
+import tempfile
 import sys
 from collections import Counter, defaultdict
 
@@ -92,7 +93,9 @@ def objdump(path):
 
 
 def ghidra(path, tsv):
-    proj = os.path.join(W, "build/isa/proj")
+    # Ghidra rejects project paths with a component starting with "." (for example
+    # ~/.cache), so the throwaway project lives in a temporary directory.
+    proj = tempfile.mkdtemp(prefix="bfin-proj.")
     os.makedirs(proj, exist_ok=True)
     env = dict(os.environ, JAVA_HOME=os.environ.get(
         "JAVA_HOME", "/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"))

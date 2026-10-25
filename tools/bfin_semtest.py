@@ -21,6 +21,7 @@ import re
 import shutil
 import struct
 import subprocess
+import tempfile
 import sys
 from collections import Counter, defaultdict
 
@@ -40,7 +41,7 @@ DUMP = ["R%d" % i for i in range(8)] + ["P%d" % i for i in range(6)] + ["SP", "F
 OUT = DUMP + ["A0", "A1", "ASTAT"]
 SKIP = re.compile(r"JUMP|CALL|RTS|RTI|RTX|RTN|RTE|LSETUP|IDLE|RAISE|EXCPT|\bCLI\b|\bSTI\b|TESTSET|DBG|PRNT|OUTC|ABORT|HLT|"
                   r"SYSCFG|RETI|RETX|RETN|RETE|SEQSTAT|USP|EMUDAT|CYCLES|\bL[CTB][01]\b|PREFETCH|FLUSH|SYNC|"
-                  r"DISALGNEXCPT|SAA|BYTEOP")
+                  r"DISALGNEXCPT")
 EDGES = [0, 1, 2, 0xFFFFFFFF, 0x7FFFFFFF, 0x80000000, 0x80000001, 0x7FFF, 0x8000, 0xFFFF, 0x10000,
          0xFFFF8000, 0x00007FFF, 0x40000000, 0x3FFFFFFF, 0xC0000000]
 HALVES = [0, 1, 0x7FFF, 0x8000, 0xFFFF, 0x8001, 0x7FFE, 0x4000]
@@ -97,6 +98,12 @@ def sim_undefined(words, regs, text):
     write, or the encoding itself is (a packet writing one register twice)."""
     parts = [dests(p) for p in text.split("||")]
     if len(parts) == 3 and (parts[0] & (parts[1] | parts[2]) or parts[1] & parts[2]):
+        return True
+    # a pointer or index register modified by two slots (for example "I2 += M2 (BREV) ||
+    # W[I2++] = R1.L"): as undefined as a data register written twice
+    ptrs = [set(re.findall(r"\b([IP]\d)\s*(?:\+=|-=|=(?!=)|\+\+|--)", p)) |
+            set(re.findall(r"(?:\+\+|--)\s*([IP]\d)\b", p)) for p in text.split("||")]
+    if len(ptrs) == 3 and (ptrs[0] & (ptrs[1] | ptrs[2]) or ptrs[1] & ptrs[2]):
         return True
     if len(parts) == 3 and parts[0] & set(re.findall(r"R(\d)", "||".join(text.split("||")[1:]))):
         return True     # GDB 17.2 lets both 16-bit slots see the DSP slot's new data register
@@ -223,7 +230,9 @@ def run_ghidra(cases, region):
             f.write(f"{i}\t{CODE + 16 * i:x}\t{hexb}\t{win:x}\t{kv}\n")
     env = dict(os.environ, JAVA_HOME=os.environ.get(
         "JAVA_HOME", "/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"))
-    proj = os.path.join(B, "proj")
+    # Ghidra rejects project paths with a component starting with "." (for example
+    # ~/.cache), so the throwaway project lives in a temporary directory.
+    proj = tempfile.mkdtemp(prefix="bfin-proj.")
     os.makedirs(proj, exist_ok=True)
     r = subprocess.run([f"{GHIDRA}/support/analyzeHeadless", proj, "sem", "-import", region, "-overwrite",
                         "-loader", "BinaryLoader", "-loader-baseAddr", hex(REGION),
