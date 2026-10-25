@@ -64,31 +64,67 @@ macro brev32(x) {
   x = (x >> 16) | (x << 16);
 }
 
-# DAG post-modify. For a configured circular buffer, the index is relative to
-# Bn and wraps once at either end of its Ln-byte span. The architectural setup
-# requires the original index to lie in the span and |modify| <= length.
-# A zero length selects linear addressing, including when Bn retains a value.
+# DAG post-modify, bit-exact with the GNU simulator's dagadd()/dagsub() (gdb
+# sim/bfin/bfin-sim.c), which models the hardware's carry-based wrap so that it also holds
+# when the index lies outside its Bn/Ln span, |modify| exceeds the length, or the buffer
+# crosses 0xffffffff (Ghidra-Rare; upstream assumed a configured buffer).  A zero length
+# gives linear addressing.  modify is a signed 32-bit amount (an M register or 2/4).
 macro dagupdate(i, source, b, l, modify) {
-  local step:4 = modify;
-  local next:4 = source + step;
-  if (l == 0) goto <done>;
-  local offset:8 = zext(source) - zext(b) + sext(step);
-  if (step s< 0) goto <negative>;
-  if (offset < zext(l)) goto <wrapped>;
-  offset = offset - zext(l);
-  goto <wrapped>;
-<negative>
-  if (offset s>= 0) goto <wrapped>;
-  offset = offset + zext(l);
-<wrapped>
-  next = b + offset:4;
+  local M:4 = modify;
+  local I64:8 = zext(source);
+  local M64:8 = zext(M);
+  local L64:8 = zext(l);
+  local B64:8 = zext(b);
+  local IM:8 = I64 + M64;
+  local im32:4 = IM:4;
+  local LB:8 = L64 + B64;
+  local lb32:4 = LB:4;
+  local res:4 = im32;
+  if (M s< 0) goto <neg>;
+  local IMLp:8 = I64 + M64 - L64;
+  # same carry out of IM and LB: in range below LB; otherwise the comparison inverts
+  local samec:1 = (IM & 0x100000000) == (LB & 0x100000000);
+  local below:1 = im32 < lb32;
+  if (samec == below) goto <done>;
+  res = IMLp:4;
+  goto <done>;
+<neg>
+  local IMLn:8 = I64 + M64 + L64;
+  local cond:1 = ((I64 & 0x80000000) != 0) || ((IM & 0x100000000) != 0);
+  local belowb:1 = im32 < b;
+  if (cond != belowb) goto <done>;
+  res = IMLn:4;
 <done>
-  i = next;
+  i = res;
 }
 
 macro dagsub(i, source, b, l, modify) {
-  local negative:4 = 0 - modify;
-  dagupdate(i, source, b, l, negative);
+  local M:4 = modify;
+  local I64:8 = zext(source);
+  local L64:8 = zext(l);
+  local B64:8 = zext(b);
+  local mbar:4 = ~M + 1;
+  local IM:8 = I64 + zext(mbar);
+  local im32:4 = IM:4;
+  local LB:8 = L64 + B64;
+  local lb32:4 = LB:4;
+  local res:4 = im32;
+  if (M s< 0) goto <neg>;
+  local IMLp:8 = I64 + zext(mbar) + L64;
+  local cond:1 = (M == 0) || ((IM & 0x100000000) != 0);
+  local belowb:1 = im32 < b;
+  if (cond != belowb) goto <done>;
+  res = IMLp:4;
+  goto <done>;
+<neg>
+  local IMLn:8 = I64 + zext(mbar) - L64;
+  local c1:1 = ((I64 & 0x80000000) != 0) && ((IM & 0x100000000) != 0);
+  local c2:1 = (LB & 0x100000000) != 0;
+  local below:1 = im32 < lb32;
+  if ((c1 == c2) == below) goto <done>;
+  res = IMLn:4;
+<done>
+  i = res;
 }
 
 # ---- byte-video helpers (Ghidra-Rare; semantics of gdb sim/bfin/bfin-sim.c) ---------------
