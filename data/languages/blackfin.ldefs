@@ -6,5 +6,6 @@
     <description>Analog Devices Blackfin (classic ISA, ADSP-BF53x)</description>
     <compiler name="GNU Blackfin" spec="blackfin.cspec" id="default"/>
     <external_name tool="gnu" name="bfin"/>
+    <external_name tool="DWARF.register.mapping.file" name="blackfin.dwarf"/>
   </language>
 </language_definitions>

@@ -1,0 +1,35 @@
+<dwarf>
+  <!-- GCC Blackfin DWARF numbers are its hard register numbers (gcc/config/bfin/bfin.h
+       REGISTER_NAMES, no remapping): R0-R7 = 0-7, P0-P5 = 8-13, SP = 14, FP = 15,
+       I0-I3 = 16-19, B0-B3 = 20-23, L0-L3 = 24-27, M0-M3 = 28-31, A0 = 32, A1 = 33,
+       CC = 34, RETS = 35, RETI 36, RETX 37, RETN 38, RETE 39, ASTAT 40 (not a single
+       register here), SEQSTAT 41, USP 42, LT0 44, LT1 45, LC0 46, LC1 47, LB0 48, LB1 49.
+       At function entry the CFA is SP + 0. -->
+  <register_mappings>
+    <register_mapping dwarf="0" ghidra="R0" auto_count="8"/>
+    <register_mapping dwarf="8" ghidra="P0" auto_count="6"/>
+    <register_mapping dwarf="14" ghidra="SP" stackpointer="true"/>
+    <register_mapping dwarf="15" ghidra="FP"/>
+    <register_mapping dwarf="16" ghidra="I0" auto_count="4"/>
+    <register_mapping dwarf="20" ghidra="B0" auto_count="4"/>
+    <register_mapping dwarf="24" ghidra="L0" auto_count="4"/>
+    <register_mapping dwarf="28" ghidra="M0" auto_count="4"/>
+    <register_mapping dwarf="32" ghidra="A0"/>
+    <register_mapping dwarf="33" ghidra="A1"/>
+    <register_mapping dwarf="34" ghidra="CC"/>
+    <register_mapping dwarf="35" ghidra="RETS"/>
+    <register_mapping dwarf="36" ghidra="RETI"/>
+    <register_mapping dwarf="37" ghidra="RETX"/>
+    <register_mapping dwarf="38" ghidra="RETN"/>
+    <register_mapping dwarf="39" ghidra="RETE"/>
+    <register_mapping dwarf="41" ghidra="SEQSTAT"/>
+    <register_mapping dwarf="42" ghidra="USP"/>
+    <register_mapping dwarf="44" ghidra="LT0"/>
+    <register_mapping dwarf="45" ghidra="LT1"/>
+    <register_mapping dwarf="46" ghidra="LC0"/>
+    <register_mapping dwarf="47" ghidra="LC1"/>
+    <register_mapping dwarf="48" ghidra="LB0"/>
+    <register_mapping dwarf="49" ghidra="LB1"/>
+  </register_mappings>
+  <call_frame_cfa value="0"/>
+</dwarf>
